@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RECON // OSINT Reconnaissance Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e0a;
+    --bg-2: #0f1410;
+    --panel: #11181244;
+    --border: #1f2a20;
+    --border-bright: #2c3d2e;
+    --text: #c8d4c8;
+    --text-dim: #6e8270;
+    --text-faded: #455449;
+    --accent: #7dff8a;
+    --accent-2: #00ff9c;
+    --warn: #ffb547;
+    --danger: #ff5c5c;
+    --info: #5cb8ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* CRT-ish scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(125, 255, 138, 0.02) 0px,
+        rgba(125, 255, 138, 0.02) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+    z-index: 100;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
+    z-index: 99;
+  }
+
+  /* ─── Top bar ─── */
+  .topbar {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-2);
+    position: relative;
+    z-index: 10;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  .brand-mark {
+    font-family: 'Major Mono Display', monospace;
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-shadow: 0 0 12px rgba(125, 255, 138, 0.4);
+  }
+
+  .brand-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  .status {
+    display: flex;
+    gap: 22px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .status span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ─── Main layout ─── */
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 36px 28px 60px;
+  }
+
+  /* ─── Hero / search ─── */
+  .hero {
+    border: 1px solid var(--border-bright);
+    background:
+      linear-gradient(135deg, rgba(125,255,138,0.03), transparent 60%),
+      var(--panel);
+    padding: 32px;
+    position: relative;
+    margin-bottom: 28px;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 18px; height: 18px;
+    border-top: 2px solid var(--accent);
+    border-left: 2px solid var(--accent);
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 18px; height: 18px;
+    border-bottom: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+  }
+
+  .hero-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .hero-title {
+    font-family: 'Major Mono Display', monospace;
+    font-size: clamp(28px, 4vw, 44px);
+    color: var(--text);
+    margin-bottom: 6px;
+    line-height: 1;
+  }
+
+  .hero-tag {
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-bottom: 26px;
+    max-width: 580px;
+  }
+
+  .search-row {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border-bright);
+    background: #060906;
+    transition: border-color 0.2s;
+  }
+
+  .search-row:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 18px rgba(125, 255, 138, 0.15);
+  }
+
+  .search-prefix {
+    padding: 14px 16px;
+    color: var(--accent);
+    font-weight: 700;
+    border-right: 1px solid var(--border);
+    user-select: none;
+  }
+
+  #target {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    padding: 14px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    letter-spacing: 0.5px;
+  }
+
+  #target::placeholder { color: var(--text-faded); }
+
+  .scan-btn {
+    background: var(--accent);
+    color: #001a0a;
+    border: 0;
+    padding: 0 32px;
+    font-family: inherit;
+    font-weight: 800;
+    letter-spacing: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+  .scan-btn:hover { background: var(--accent-2); box-shadow: inset 0 0 0 100px rgba(0,0,0,0.1); }
+  .scan-btn:disabled { background: var(--text-faded); cursor: not-allowed; }
+
+  .quick {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .quick-label { color: var(--text-faded); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+  .quick button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 5px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quick button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── Console / log ─── */
+  .console {
+    margin-top: 24px;
+    background: #060a06;
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    font-size: 11px;
+    max-height: 140px;
+    overflow-y: auto;
+    display: none;
+  }
+  .console.active { display: block; }
+  .log-line { color: var(--text-dim); margin-bottom: 2px; }
+  .log-line .prompt { color: var(--accent); }
+  .log-line .ok { color: var(--accent); }
+  .log-line .err { color: var(--danger); }
+  .log-line .warn { color: var(--warn); }
+
+  /* ─── Results grid ─── */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+
+  .stat-card {
+    border: 1px solid var(--border);
+    padding: 16px 18px;
+    background: var(--panel);
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+  }
+  .stat-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 28px;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-sub {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--text-faded);
+  }
+
+  /* ─── Modules ─── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .module {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .module-head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .module-title {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .module-title::before {
+    content: '▸';
+    color: var(--accent);
+  }
+  .module-meta {
+    font-size: 10px;
+    color: var(--text-faded);
+    letter-spacing: 1px;
+  }
+
+  .module-body {
+    padding: 16px;
+    flex: 1;
+    overflow-x: auto;
+  }
+
+  .module.full { grid-column: 1 / -1; }
+
+  /* tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  th {
+    text-align: left;
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 10px;
+    border-bottom: 1px dashed var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    word-break: break-all;
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 0; }
+  tr:hover td { background: rgba(125,255,138,0.03); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border-bright);
+    color: var(--text-dim);
+  }
+  .badge.green { color: var(--accent); border-color: var(--accent); }
+  .badge.warn  { color: var(--warn); border-color: var(--warn); }
+  .badge.red   { color: var(--danger); border-color: var(--danger); }
+  .badge.info  { color: var(--info); border-color: var(--info); }
+
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .empty {
+    color: var(--text-faded);
+    font-style: italic;
+    padding: 14px 0;
+    text-align: center;
+    font-size: 11px;
+  }
+
+  .loading-bar {
+    height: 2px;
+    background: var(--border);
+    overflow: hidden;
+    margin: 8px 0 14px;
+    display: none;
+  }
+  .loading-bar.active { display: block; }
+  .loading-bar::after {
+    content: '';
+    display: block;
+    width: 30%;
+    height: 100%;
+    background: var(--accent);
+    animation: slide 1.2s linear infinite;
+  }
+  @keyframes slide {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+
+  .kv {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 6px 14px;
+    font-size: 12px;
+  }
+  .kv dt { color: var(--text-dim); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; padding-top: 2px; }
+  .kv dd { color: var(--text); word-break: break-all; }
+
+  footer {
+    margin-top: 50px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    color: var(--text-faded);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* fade in for sections */
+  .results { display: none; animation: fadeUp 0.5s ease-out; }
+  .results.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-mark">recon//</span>
+    <span class="brand-sub">osint reconnaissance console v0.1</span>
+  </div>
+  <div class="status">
+    <span><span class="dot"></span> system online</span>
+    <span id="clock">--:--:--</span>
+  </div>
+</div>
+
+<div class="container">
+  <section class="hero">
+    <div class="hero-label">[ initiate scan ]</div>
+    <h1 class="hero-title">target acquisition</h1>
+    <p class="hero-tag">Enter a domain to enumerate subdomains, resolve DNS records, fingerprint web servers, and pull WHOIS / netblock intelligence from public sources.</p>
+
+    <div class="search-row">
+      <span class="search-prefix">$</span>
+      <input id="target" type="text" placeholder="example.com" autocomplete="off" spellcheck="false" />
+      <button class="scan-btn" id="scan">scan</button>
+    </div>
+
+    <div class="quick">
+      <span class="quick-label">presets:</span>
+      <button data-domain="bornova.bel.tr">bornova.bel.tr</button>
+      <button data-domain="github.com">github.com</button>
+      <button data-domain="anthropic.com">anthropic.com</button>
+      <button data-domain="boun.edu.tr">boun.edu.tr</button>
+    </div>
+
+    <div class="loading-bar" id="loadbar"></div>
+    <div class="console" id="console"></div>
+  </section>
+
+  <div class="results" id="results">
+
+    <div class="summary" id="summary"></div>
+
+    <div class="grid">
+      <div class="module">
+        <div class="module-head">
+          <div class="module-title">domain intelligence</div>
+          <div class="module-meta">whois // rdap</div>
+        </div>
+        <div class="module-body" id="mod-whois"><div class="empty">no data</div></div>
+      </div>
+
+      <div class="module">
+        <div class="module-head">
+          <div class="module-title">network footprint</div>
+          <div class="module-meta">asn // geo</div>
+        </div>
+        <div class="module-body" id="mod-network"><div class="empty">no data</div></div>
+      </div>
+
+      <div class="module full">
+        <div class="module-head">
+          <div class="module-title">dns records</div>
+          <div class="module-meta">a // aaaa // mx // txt // ns // cname</div>
+        </div>
+        <div class="module-body" id="mod-dns"><div class="empty">no data</div></div>
+      </div>
+
+      <div class="module full">
+        <div class="module-head">
+          <div class="module-title">subdomain enumeration</div>
+          <div class="module-meta" id="sub-count">0 unique</div>
+        </div>
+        <div class="module-body" id="mod-subs"><div class="empty">no data</div></div>
+      </div>
+
+      <div class="module full">
+        <div class="module-head">
+          <div class="module-title">tls / certificate transparency</div>
+          <div class="module-meta">crt.sh</div>
+        </div>
+        <div class="module-body" id="mod-certs"><div class="empty">no data</div></div>
+      </div>
+
+      <div class="module full">
+        <div class="module-head">
+          <div class="module-title">http fingerprint</div>
+          <div class="module-meta">headers // technologies</div>
+        </div>
+        <div class="module-body" id="mod-http"><div class="empty">no data</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>recon//console — built for educational osint</span>
+    <span>data sources: crt.sh · dns.google · rdap · ip-api</span>
+  </footer>
+</div>
+
+<script>
+/* ─── tiny clock ─── */
+function tick() {
+  const d = new Date();
+  const z = n => String(n).padStart(2, '0');
+  document.getElementById('clock').textContent =
+    `${z(d.getUTCHours())}:${z(d.getUTCMinutes())}:${z(d.getUTCSeconds())} UTC`;
+}
+setInterval(tick, 1000); tick();
+
+/* ─── log helper ─── */
+const consoleEl = document.getElementById('console');
+function log(msg, type='') {
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="prompt">›</span> <span class="${type}">${msg}</span>`;
+  consoleEl.appendChild(line);
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+function clearLog() { consoleEl.innerHTML = ''; }
+
+/* ─── helpers ─── */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function cleanDomain(raw) {
+  return raw.trim().toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '')
+    .replace(/^www\./, '')
+    .split('/')[0];
+}
+
+/* ─── data fetchers (all CORS-friendly public APIs, no keys) ─── */
+
+async function fetchDNS(domain, type) {
+  try {
+    const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=${type}`);
+    const j = await r.json();
+    return (j.Answer || []).map(a => ({ type, name: a.name, ttl: a.TTL, data: a.data }));
+  } catch (e) { return []; }
+}
+
+async function fetchAllDNS(domain) {
+  const types = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME', 'SOA'];
+  const results = await Promise.all(types.map(t => fetchDNS(domain, t)));
+  return results.flat();
+}
+
+async function fetchSubdomainsCrt(domain) {
+  try {
+    const r = await fetch(`https://crt.sh/?q=%25.${encodeURIComponent(domain)}&output=json`);
+    if (!r.ok) return { subs: [], certs: [] };
+    const j = await r.json();
+    const subSet = new Set();
+    const certs = [];
+    for (const row of j) {
+      const names = String(row.name_value || '').split(/\n/);
+      for (const n of names) {
+        const clean = n.trim().toLowerCase().replace(/^\*\./, '');
+        if (clean.endsWith(domain)) subSet.add(clean);
+      }
+      certs.push({
+        issuer: row.issuer_name,
+        common_name: row.common_name,
+        not_before: row.not_before,
+        not_after: row.not_after,
+        serial: row.serial_number,
+      });
+    }
+    return { subs: Array.from(subSet).sort(), certs: certs.slice(0, 20) };
+  } catch (e) { return { subs: [], certs: [] }; }
+}
+
+async function fetchRDAP(domain) {
+  try {
+    const r = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+async function fetchIPInfo(ip) {
+  try {
+    const r = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+async function fetchHTTPHead(domain) {
+  // CORS often blocks reads, but we try; use a fallback noscript probe
+  const out = { reachable: false, technologies: [], headers: {}, status: null, finalUrl: null };
+  try {
+    const r = await fetch(`https://${domain}`, { method: 'GET', mode: 'cors', redirect: 'follow' });
+    out.reachable = true;
+    out.status = r.status;
+    out.finalUrl = r.url;
+    r.headers.forEach((v, k) => out.headers[k] = v);
+  } catch (e) {
+    // fallback: no-cors, can't read but proves reachability
+    try {
+      await fetch(`https://${domain}`, { mode: 'no-cors' });
+      out.reachable = true;
+    } catch (_) {}
+  }
+  return out;
+}
+
+/* ─── tech detection from headers ─── */
+function detectTech(headers) {
+  const tech = [];
+  const h = Object.fromEntries(Object.entries(headers).map(([k,v]) => [k.toLowerCase(), v]));
+
+  if (h['server']) tech.push({ name: h['server'], category: 'server' });
+  if (h['x-powered-by']) tech.push({ name: h['x-powered-by'], category: 'platform' });
+  if (h['x-aspnet-version']) tech.push({ name: 'ASP.NET ' + h['x-aspnet-version'], category: 'platform' });
+  if (h['x-drupal-cache']) tech.push({ name: 'Drupal', category: 'cms' });
+  if (h['x-generator']) tech.push({ name: h['x-generator'], category: 'cms' });
+  if (h['cf-ray'] || h['cf-cache-status']) tech.push({ name: 'Cloudflare', category: 'cdn' });
+  if (h['x-akamai-transformed']) tech.push({ name: 'Akamai', category: 'cdn' });
+  if (h['x-vercel-id']) tech.push({ name: 'Vercel', category: 'host' });
+  if (h['x-amz-cf-id']) tech.push({ name: 'AWS CloudFront', category: 'cdn' });
+  if (h['x-fastly-request-id']) tech.push({ name: 'Fastly', category: 'cdn' });
+  if (h['set-cookie'] && /phpsessid/i.test(h['set-cookie'])) tech.push({ name: 'PHP', category: 'language' });
+  if (h['set-cookie'] && /jsessionid/i.test(h['set-cookie'])) tech.push({ name: 'Java/JSP', category: 'language' });
+  if (h['strict-transport-security']) tech.push({ name: 'HSTS enabled', category: 'security' });
+  if (h['content-security-policy']) tech.push({ name: 'CSP enabled', category: 'security' });
+  return tech;
+}
+
+/* ─── UI rendering ─── */
+
+function renderSummary(data) {
+  const el = $('summary');
+  const cards = [
+    { label: 'subdomains', value: data.subs.length, sub: 'discovered' },
+    { label: 'dns records', value: data.dns.length, sub: 'resolved' },
+    { label: 'ip addresses', value: data.ips.length, sub: 'unique a/aaaa' },
+    { label: 'mail servers', value: data.dns.filter(r => r.type === 'MX').length, sub: 'mx records' },
+    { label: 'tech detected', value: data.tech.length, sub: 'http fingerprint' },
+    { label: 'certs seen', value: data.certs.length, sub: 'ct logs' },
+  ];
+  el.innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value">${c.value}</div>
+      <div class="stat-sub">${c.sub}</div>
+    </div>
+  `).join('');
+}
+
+function renderWHOIS(rdap) {
+  if (!rdap) return $('mod-whois').innerHTML = '<div class="empty">no rdap response</div>';
+  const events = (rdap.events || []).reduce((m, e) => (m[e.eventAction] = e.eventDate, m), {});
+  const reg = (rdap.entities || []).find(e => (e.roles || []).includes('registrar'));
+  const regName = reg?.vcardArray?.[1]?.find(v => v[0] === 'fn')?.[3] || 'unknown';
+  const ns = (rdap.nameservers || []).map(n => n.ldhName).filter(Boolean);
+  const status = (rdap.status || []).join(', ') || '—';
+
+  $('mod-whois').innerHTML = `
+    <dl class="kv">
+      <dt>handle</dt><dd>${esc(rdap.handle || '—')}</dd>
+      <dt>registrar</dt><dd>${esc(regName)}</dd>
+      <dt>status</dt><dd>${esc(status)}</dd>
+      <dt>registered</dt><dd>${esc(events.registration || '—')}</dd>
+      <dt>last updated</dt><dd>${esc(events['last changed'] || events['last update of rdap database'] || '—')}</dd>
+      <dt>expires</dt><dd>${esc(events.expiration || '—')}</dd>
+      <dt>nameservers</dt><dd>${ns.length ? ns.map(n => `<div>${esc(n)}</div>`).join('') : '—'}</dd>
+    </dl>
+  `;
+}
+
+async function renderNetwork(ips) {
+  if (!ips.length) return $('mod-network').innerHTML = '<div class="empty">no resolvable a/aaaa records</div>';
+  const lookups = await Promise.all(ips.slice(0, 5).map(fetchIPInfo));
+  const rows = lookups.filter(Boolean).map(d => `
+    <tr>
+      <td>${esc(d.ip)}</td>
+      <td>${esc(d.connection?.org || d.connection?.isp || '—')}</td>
+      <td>${esc(d.connection?.asn ? 'AS' + d.connection.asn : '—')}</td>
+      <td>${esc([d.city, d.region, d.country].filter(Boolean).join(', ') || '—')}</td>
+    </tr>
+  `).join('');
+  $('mod-network').innerHTML = rows
+    ? `<table><thead><tr><th>ip</th><th>organization</th><th>asn</th><th>geolocation</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="empty">no enrichment data</div>';
+}
+
+function renderDNS(records) {
+  if (!records.length) return $('mod-dns').innerHTML = '<div class="empty">no records</div>';
+  const typeColor = { A: 'green', AAAA: 'green', MX: 'info', TXT: 'warn', NS: 'info', CNAME: 'info', SOA: '' };
+  const rows = records.map(r => `
+    <tr>
+      <td><span class="badge ${typeColor[r.type] || ''}">${r.type}</span></td>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.ttl)}</td>
+      <td>${esc(r.data)}</td>
+    </tr>
+  `).join('');
+  $('mod-dns').innerHTML = `<table><thead><tr><th>type</th><th>name</th><th>ttl</th><th>data</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderSubs(subs, target) {
+  $('sub-count').textContent = `${subs.length} unique`;
+  if (!subs.length) return $('mod-subs').innerHTML = '<div class="empty">no subdomains found in ct logs</div>';
+  $('mod-subs').innerHTML = `
+    <div class="pill-row">
+      ${subs.map(s => `<span class="badge ${s === target ? 'green' : ''}">${esc(s)}</span>`).join('')}
+    </div>
+  `;
+}
+
+function renderCerts(certs) {
+  if (!certs.length) return $('mod-certs').innerHTML = '<div class="empty">no certificates</div>';
+  const rows = certs.map(c => {
+    const exp = c.not_after ? new Date(c.not_after) : null;
+    const expired = exp && exp < new Date();
+    return `
+      <tr>
+        <td>${esc(c.common_name || '—')}</td>
+        <td>${esc(c.issuer || '—')}</td>
+        <td>${esc((c.not_before || '').split('T')[0])}</td>
+        <td>${esc((c.not_after || '').split('T')[0])} ${expired ? '<span class="badge red">expired</span>' : '<span class="badge green">valid</span>'}</td>
+      </tr>
+    `;
+  }).join('');
+  $('mod-certs').innerHTML = `<table><thead><tr><th>common name</th><th>issuer</th><th>not before</th><th>not after</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderHTTP(http, tech) {
+  const headerRows = Object.entries(http.headers || {}).map(([k, v]) => `
+    <tr><td style="width:200px;color:var(--text-dim);">${esc(k)}</td><td>${esc(v)}</td></tr>
+  `).join('');
+
+  const techHtml = tech.length
+    ? `<div class="pill-row" style="margin-bottom:14px;">
+        ${tech.map(t => `<span class="badge green">${esc(t.name)} <span style="color:var(--text-faded);margin-left:4px;">${esc(t.category)}</span></span>`).join('')}
+      </div>`
+    : '<div class="empty" style="text-align:left;padding:0 0 12px;">no technologies fingerprinted (CORS may have blocked headers — try CLI variant for full data)</div>';
+
+  const reachBadge = http.reachable
+    ? `<span class="badge green">reachable</span>`
+    : `<span class="badge red">unreachable</span>`;
+
+  $('mod-http').innerHTML = `
+    <dl class="kv" style="margin-bottom:18px;">
+      <dt>status</dt><dd>${reachBadge} ${http.status ? '<span class="badge info">HTTP '+http.status+'</span>' : ''}</dd>
+      <dt>final url</dt><dd>${esc(http.finalUrl || '—')}</dd>
+    </dl>
+
+    <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">technologies</div>
+    ${techHtml}
+
+    ${headerRows
+      ? `<div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">response headers</div>
+         <table>${headerRows}</table>`
+      : ''}
+  `;
+}
+
+/* ─── orchestrator ─── */
+async function runScan(domainRaw) {
+  const domain = cleanDomain(domainRaw);
+  if (!domain || !domain.includes('.')) {
+    alert('Enter a valid domain (e.g. example.com)');
+    return;
+  }
+
+  const btn = $('scan');
+  btn.disabled = true;
+  btn.textContent = 'scanning...';
+  $('loadbar').classList.add('active');
+  consoleEl.classList.add('active');
+  clearLog();
+  $('results').classList.remove('active');
+
+  log(`target locked: <b>${domain}</b>`);
+  log('initiating multi-vector enumeration...');
+
+  // run in parallel
+  log('[01] resolving dns records via dns.google...');
+  log('[02] querying crt.sh certificate transparency...');
+  log('[03] fetching rdap whois data...');
+  log('[04] fingerprinting http surface...');
+
+  const [dns, ctData, rdap, http] = await Promise.all([
+    fetchAllDNS(domain),
+    fetchSubdomainsCrt(domain),
+    fetchRDAP(domain),
+    fetchHTTPHead(domain),
+  ]);
+
+  const ips = Array.from(new Set(
+    dns.filter(r => r.type === 'A' || r.type === 'AAAA').map(r => r.data)
+  ));
+  const tech = detectTech(http.headers);
+
+  log(`dns: <span class="ok">${dns.length} records</span>`, 'ok');
+  log(`subdomains: <span class="ok">${ctData.subs.length} unique</span>`, 'ok');
+  log(`whois: <span class="${rdap ? 'ok' : 'warn'}">${rdap ? 'received' : 'no data'}</span>`);
+  log(`http: <span class="${http.reachable ? 'ok' : 'err'}">${http.reachable ? 'reachable' : 'unreachable'}</span>`);
+  log('rendering report...', 'ok');
+
+  // render
+  const aggregate = { dns, subs: ctData.subs, certs: ctData.certs, ips, tech };
+  renderSummary(aggregate);
+  renderWHOIS(rdap);
+  await renderNetwork(ips);
+  renderDNS(dns);
+  renderSubs(ctData.subs, domain);
+  renderCerts(ctData.certs);
+  renderHTTP(http, tech);
+
+  $('results').classList.add('active');
+  $('loadbar').classList.remove('active');
+  btn.disabled = false;
+  btn.textContent = 'scan';
+  log('scan complete.', 'ok');
+}
+
+/* ─── events ─── */
+$('scan').addEventListener('click', () => runScan($('target').value));
+$('target').addEventListener('keydown', e => { if (e.key === 'Enter') runScan(e.target.value); });
+document.querySelectorAll('.quick button').forEach(b => {
+  b.addEventListener('click', () => {
+    $('target').value = b.dataset.domain;
+    runScan(b.dataset.domain);
+  });
+});
+</script>
+</body>
+</html>
