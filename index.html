@@ -1,908 +1,910 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RECON // OSINT Reconnaissance Console</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&family=Major+Mono+Display&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0e0a;
-    --bg-2: #0f1410;
-    --panel: #11181244;
-    --border: #1f2a20;
-    --border-bright: #2c3d2e;
-    --text: #c8d4c8;
-    --text-dim: #6e8270;
-    --text-faded: #455449;
-    --accent: #7dff8a;
-    --accent-2: #00ff9c;
-    --warn: #ffb547;
-    --danger: #ff5c5c;
-    --info: #5cb8ff;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RECON // Domain Intelligence Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Major+Mono+Display&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #020402;
+      --panel: rgba(7, 18, 9, 0.82);
+      --panel-strong: rgba(10, 29, 13, 0.93);
+      --green: #7dff8a;
+      --green-soft: rgba(125, 255, 138, 0.18);
+      --green-dim: rgba(125, 255, 138, 0.62);
+      --line: rgba(125, 255, 138, 0.28);
+      --line-strong: rgba(125, 255, 138, 0.52);
+      --text: #d8ffdc;
+      --muted: rgba(216, 255, 220, 0.62);
+      --dim: rgba(216, 255, 220, 0.42);
+      --blue: #7cc8ff;
+      --amber: #ffd37d;
+      --red: #ff6b7b;
+      --shadow: 0 0 35px rgba(125, 255, 138, 0.10), inset 0 0 35px rgba(125, 255, 138, 0.025);
+      --radius: 18px;
+      --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --display: 'Major Mono Display', var(--mono);
+    }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
 
-  html, body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    line-height: 1.55;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(circle at 18% 8%, rgba(125, 255, 138, 0.14), transparent 26%),
+        radial-gradient(circle at 90% 12%, rgba(66, 255, 186, 0.08), transparent 24%),
+        linear-gradient(180deg, #020402 0%, #010201 100%);
+      color: var(--text);
+      font-family: var(--mono);
+      overflow-x: hidden;
+    }
 
-  /* CRT-ish scanline overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background:
-      repeating-linear-gradient(
-        0deg,
-        rgba(125, 255, 138, 0.02) 0px,
-        rgba(125, 255, 138, 0.02) 1px,
-        transparent 1px,
-        transparent 3px
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.025) 0,
+        rgba(255, 255, 255, 0.025) 1px,
+        transparent 2px,
+        transparent 5px
       );
-    z-index: 100;
-  }
+      mix-blend-mode: screen;
+      opacity: 0.45;
+    }
 
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
-    z-index: 99;
-  }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 21;
+      background: radial-gradient(circle at center, transparent 42%, rgba(0, 0, 0, 0.48) 100%);
+    }
 
-  /* ─── Top bar ─── */
-  .topbar {
-    border-bottom: 1px solid var(--border);
-    padding: 14px 28px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--bg-2);
-    position: relative;
-    z-index: 10;
-  }
+    ::selection { background: var(--green); color: #001805; }
 
-  .brand {
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-  }
+    .app { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; position: relative; z-index: 1; }
 
-  .brand-mark {
-    font-family: 'Major Mono Display', monospace;
-    font-size: 22px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    text-shadow: 0 0 12px rgba(125, 255, 138, 0.4);
-  }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 18px; padding: 15px 18px;
+      border: 1px solid var(--line); background: rgba(3, 10, 4, 0.72);
+      box-shadow: var(--shadow); border-radius: var(--radius);
+      backdrop-filter: blur(14px); position: sticky; top: 12px; z-index: 10;
+    }
 
-  .brand-sub {
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 4px;
-    text-transform: uppercase;
-  }
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .brandmark { color: var(--green); font-weight: 800; letter-spacing: 0.06em; text-transform: lowercase; text-shadow: 0 0 14px rgba(125, 255, 138, 0.45); white-space: nowrap; }
+    .tagline { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .system { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .online { display: inline-flex; align-items: center; gap: 7px; color: var(--green); }
+    .dot { width: 9px; height: 9px; border-radius: 99px; background: var(--green); box-shadow: 0 0 14px rgba(125, 255, 138, 0.95); animation: pulse 1.3s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.45; transform: scale(0.86); } 50% { opacity: 1; transform: scale(1.15); } }
 
-  .status {
-    display: flex;
-    gap: 22px;
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-  }
+    .hero {
+      margin-top: 22px; padding: clamp(24px, 4vw, 48px);
+      border: 1px solid var(--line-strong); border-radius: 28px;
+      background: linear-gradient(120deg, rgba(125, 255, 138, 0.08), transparent 35%), linear-gradient(180deg, rgba(7, 18, 9, 0.94), rgba(2, 7, 3, 0.92));
+      position: relative; overflow: hidden; box-shadow: var(--shadow);
+    }
 
-  .status span {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+    .hero::before, .cornered::before { content: ""; position: absolute; top: 14px; left: 14px; width: 38px; height: 38px; border-top: 2px solid var(--green); border-left: 2px solid var(--green); opacity: 0.82; }
+    .hero::after, .cornered::after { content: ""; position: absolute; right: 14px; bottom: 14px; width: 38px; height: 38px; border-right: 2px solid var(--green); border-bottom: 2px solid var(--green); opacity: 0.82; }
 
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-    animation: pulse 2s infinite;
-  }
+    .label { display: inline-flex; color: var(--green); border: 1px solid var(--line-strong); background: var(--green-soft); padding: 7px 10px; border-radius: 999px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 22px; }
 
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
+    h1 { margin: 0; font-family: var(--display); font-size: clamp(38px, 7vw, 92px); line-height: 0.95; letter-spacing: -0.08em; color: #f1fff3; text-shadow: 0 0 20px rgba(125, 255, 138, 0.18); }
 
-  /* ─── Main layout ─── */
-  .container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 36px 28px 60px;
-  }
+    .lede { max-width: 880px; color: var(--muted); font-size: clamp(14px, 1.5vw, 17px); line-height: 1.8; margin: 22px 0 26px; }
 
-  /* ─── Hero / search ─── */
-  .hero {
-    border: 1px solid var(--border-bright);
-    background:
-      linear-gradient(135deg, rgba(125,255,138,0.03), transparent 60%),
-      var(--panel);
-    padding: 32px;
-    position: relative;
-    margin-bottom: 28px;
-  }
+    .search-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; border: 1px solid var(--line-strong); background: rgba(0, 8, 2, 0.82); padding: 10px; border-radius: 18px; box-shadow: inset 0 0 30px rgba(125, 255, 138, 0.045); }
 
-  .hero::before {
-    content: '';
-    position: absolute;
-    top: -1px; left: -1px;
-    width: 18px; height: 18px;
-    border-top: 2px solid var(--accent);
-    border-left: 2px solid var(--accent);
-  }
-  .hero::after {
-    content: '';
-    position: absolute;
-    bottom: -1px; right: -1px;
-    width: 18px; height: 18px;
-    border-bottom: 2px solid var(--accent);
-    border-right: 2px solid var(--accent);
-  }
+    .prompt { color: var(--green); font-weight: 800; padding-left: 10px; text-shadow: 0 0 12px rgba(125, 255, 138, 0.58); }
 
-  .hero-label {
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 4px;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-  }
+    input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--text); font: 600 16px/1.4 var(--mono); min-height: 48px; }
+    input::placeholder { color: rgba(216, 255, 220, 0.34); }
+    input:focus { text-shadow: 0 0 9px rgba(125, 255, 138, 0.4); }
 
-  .hero-title {
-    font-family: 'Major Mono Display', monospace;
-    font-size: clamp(28px, 4vw, 44px);
-    color: var(--text);
-    margin-bottom: 6px;
-    line-height: 1;
-  }
+    button { font-family: var(--mono); cursor: pointer; color: var(--text); border: 1px solid var(--line-strong); background: rgba(125, 255, 138, 0.09); transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease; }
+    button:hover, button:focus-visible { transform: translateY(-1px); border-color: var(--green); box-shadow: 0 0 22px rgba(125, 255, 138, 0.14); outline: none; }
 
-  .hero-tag {
-    color: var(--text-dim);
-    font-size: 12px;
-    margin-bottom: 26px;
-    max-width: 580px;
-  }
+    .scan-btn { min-height: 48px; padding: 0 24px; border-radius: 12px; background: var(--green); color: #001805; font-weight: 900; letter-spacing: 0.10em; border-color: var(--green); text-shadow: none; }
+    .scan-btn:disabled { opacity: 0.48; cursor: wait; transform: none; }
 
-  .search-row {
-    display: flex;
-    gap: 0;
-    border: 1px solid var(--border-bright);
-    background: #060906;
-    transition: border-color 0.2s;
-  }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .chip { padding: 9px 12px; border-radius: 999px; color: var(--green-dim); font-size: 12px; background: rgba(0, 0, 0, 0.16); }
 
-  .search-row:focus-within {
-    border-color: var(--accent);
-    box-shadow: 0 0 18px rgba(125, 255, 138, 0.15);
-  }
+    .loading-wrap { display: none; margin-top: 22px; }
+    .loading-wrap.active { display: block; }
+    .loading-bar { height: 6px; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: rgba(125, 255, 138, 0.05); margin-bottom: 12px; }
+    .loading-bar span { display: block; height: 100%; width: 42%; background: linear-gradient(90deg, transparent, var(--green), transparent); animation: loadSweep 1.2s linear infinite; }
+    @keyframes loadSweep { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
 
-  .search-prefix {
-    padding: 14px 16px;
-    color: var(--accent);
-    font-weight: 700;
-    border-right: 1px solid var(--border);
-    user-select: none;
-  }
+    .console { max-height: 280px; overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: rgba(0, 5, 1, 0.88); padding: 14px; font-size: 12px; line-height: 1.7; color: var(--green-dim); box-shadow: inset 0 0 26px rgba(125, 255, 138, 0.045); }
 
-  #target {
-    flex: 1;
-    background: transparent;
-    border: 0;
-    color: var(--text);
-    padding: 14px 16px;
-    font-family: inherit;
-    font-size: 14px;
-    outline: none;
-    letter-spacing: 0.5px;
-  }
+    .console-line { white-space: pre-wrap; word-break: break-word; }
+    .console-line.ok { color: var(--green); }
+    .console-line.warn { color: var(--amber); }
+    .console-line.err { color: var(--red); }
+    .console-line.info { color: var(--blue); }
 
-  #target::placeholder { color: var(--text-faded); }
+    .results { display: none; margin-top: 22px; animation: fadeUp 420ms ease both; }
+    .results.ready { display: block; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
-  .scan-btn {
-    background: var(--accent);
-    color: #001a0a;
-    border: 0;
-    padding: 0 32px;
-    font-family: inherit;
-    font-weight: 800;
-    letter-spacing: 3px;
-    cursor: pointer;
-    text-transform: uppercase;
-    font-size: 12px;
-    transition: all 0.2s;
-  }
-  .scan-btn:hover { background: var(--accent-2); box-shadow: inset 0 0 0 100px rgba(0,0,0,0.1); }
-  .scan-btn:disabled { background: var(--text-faded); cursor: not-allowed; }
+    .stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
 
-  .quick {
-    margin-top: 14px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .quick-label { color: var(--text-faded); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
-  .quick button {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    padding: 5px 10px;
-    font-family: inherit;
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .quick button:hover { border-color: var(--accent); color: var(--accent); }
+    .stat-card { border: 1px solid var(--line); background: var(--panel); border-radius: var(--radius); padding: 16px; min-height: 118px; position: relative; overflow: hidden; box-shadow: var(--shadow); }
+    .stat-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--green); box-shadow: 0 0 18px rgba(125, 255, 138, 0.8); }
+    .stat-label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em; font-size: 11px; }
+    .stat-value { color: #f4fff5; font-size: 34px; font-weight: 900; margin: 12px 0 4px; }
+    .stat-sub { color: var(--dim); font-size: 12px; line-height: 1.5; }
 
-  /* ─── Console / log ─── */
-  .console {
-    margin-top: 24px;
-    background: #060a06;
-    border: 1px solid var(--border);
-    padding: 12px 16px;
-    font-size: 11px;
-    max-height: 140px;
-    overflow-y: auto;
-    display: none;
-  }
-  .console.active { display: block; }
-  .log-line { color: var(--text-dim); margin-bottom: 2px; }
-  .log-line .prompt { color: var(--accent); }
-  .log-line .ok { color: var(--accent); }
-  .log-line .err { color: var(--danger); }
-  .log-line .warn { color: var(--warn); }
+    .module-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 
-  /* ─── Results grid ─── */
-  .summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 14px;
-    margin-bottom: 22px;
-  }
+    .module { border: 1px solid var(--line); background: var(--panel); border-radius: var(--radius); padding: 18px; min-height: 220px; position: relative; overflow: hidden; box-shadow: var(--shadow); }
+    .module.full { grid-column: 1 / -1; }
+    .module-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 16px; border-bottom: 1px solid rgba(125, 255, 138, 0.16); padding-bottom: 12px; }
+    .module-title { margin: 0; color: #f3fff4; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .module-title::before { content: "▸ "; color: var(--green); }
+    .source { color: var(--dim); font-size: 11px; text-align: right; line-height: 1.5; }
+    .empty { color: var(--dim); font-style: italic; padding: 10px 0; }
 
-  .stat-card {
-    border: 1px solid var(--border);
-    padding: 16px 18px;
-    background: var(--panel);
-    position: relative;
-    overflow: hidden;
-  }
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 3px; height: 100%;
-    background: var(--accent);
-  }
-  .stat-label {
-    font-size: 9px;
-    color: var(--text-dim);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .stat-value {
-    font-size: 28px;
-    color: var(--text);
-    font-weight: 700;
-    line-height: 1;
-  }
-  .stat-sub {
-    margin-top: 6px;
-    font-size: 10px;
-    color: var(--text-faded);
-  }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 11px 10px; border-bottom: 1px solid rgba(125, 255, 138, 0.13); vertical-align: top; text-align: left; }
+    th { color: var(--green-dim); text-transform: uppercase; font-size: 10px; letter-spacing: 0.12em; font-weight: 700; }
+    td { color: rgba(216, 255, 220, 0.82); word-break: break-word; }
 
-  /* ─── Modules ─── */
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px;
-  }
+    .table-scroll { overflow: auto; max-height: 460px; border: 1px solid rgba(125, 255, 138, 0.11); border-radius: 14px; }
+    .table-scroll table tr:last-child td { border-bottom: none; }
 
-  @media (max-width: 900px) {
-    .grid { grid-template-columns: 1fr; }
-  }
+    .pill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: rgba(125, 255, 138, 0.09); color: var(--green); padding: 5px 8px; border-radius: 999px; font-size: 11px; line-height: 1; margin: 2px; white-space: nowrap; }
+    .pill.blue { color: var(--blue); border-color: rgba(124, 200, 255, 0.36); background: rgba(124, 200, 255, 0.09); }
+    .pill.amber { color: var(--amber); border-color: rgba(255, 211, 125, 0.38); background: rgba(255, 211, 125, 0.09); }
+    .pill.red { color: var(--red); border-color: rgba(255, 107, 123, 0.38); background: rgba(255, 107, 123, 0.10); }
+    .pill.dim { color: var(--muted); border-color: rgba(216, 255, 220, 0.17); background: rgba(216, 255, 220, 0.04); }
+    .pill.target { background: var(--green); color: #001805; border-color: var(--green); font-weight: 900; }
 
-  .module {
-    border: 1px solid var(--border);
-    background: var(--panel);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
+    .badges { display: flex; flex-wrap: wrap; gap: 7px; }
+    .kv { display: grid; grid-template-columns: 165px 1fr; gap: 9px 13px; font-size: 12px; }
+    .kv dt { color: var(--green-dim); }
+    .kv dd { margin: 0; color: rgba(216, 255, 220, 0.84); word-break: break-word; }
+    .notice { border-left: 3px solid var(--amber); color: rgba(255, 211, 125, 0.9); padding: 10px 12px; background: rgba(255, 211, 125, 0.07); border-radius: 10px; font-size: 12px; line-height: 1.6; margin-bottom: 14px; }
 
-  .module-head {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-2);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .module-title {
-    font-size: 11px;
-    color: var(--accent);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .module-title::before {
-    content: '▸';
-    color: var(--accent);
-  }
-  .module-meta {
-    font-size: 10px;
-    color: var(--text-faded);
-    letter-spacing: 1px;
-  }
+    .footer-note { color: var(--dim); font-size: 11px; line-height: 1.7; margin-top: 18px; text-align: center; }
+    .hidden { display: none !important; }
 
-  .module-body {
-    padding: 16px;
-    flex: 1;
-    overflow-x: auto;
-  }
+    *::-webkit-scrollbar { width: 9px; height: 9px; }
+    *::-webkit-scrollbar-track { background: rgba(125, 255, 138, 0.04); }
+    *::-webkit-scrollbar-thumb { background: rgba(125, 255, 138, 0.38); border-radius: 999px; }
 
-  .module.full { grid-column: 1 / -1; }
-
-  /* tables */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  th {
-    text-align: left;
-    color: var(--text-dim);
-    font-weight: 500;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--border);
-  }
-  td {
-    padding: 9px 10px;
-    border-bottom: 1px dashed var(--border);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    word-break: break-all;
-    vertical-align: top;
-  }
-  tr:last-child td { border-bottom: 0; }
-  tr:hover td { background: rgba(125,255,138,0.03); }
-
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    font-size: 10px;
-    letter-spacing: 1px;
-    border: 1px solid var(--border-bright);
-    color: var(--text-dim);
-  }
-  .badge.green { color: var(--accent); border-color: var(--accent); }
-  .badge.warn  { color: var(--warn); border-color: var(--warn); }
-  .badge.red   { color: var(--danger); border-color: var(--danger); }
-  .badge.info  { color: var(--info); border-color: var(--info); }
-
-  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
-
-  .empty {
-    color: var(--text-faded);
-    font-style: italic;
-    padding: 14px 0;
-    text-align: center;
-    font-size: 11px;
-  }
-
-  .loading-bar {
-    height: 2px;
-    background: var(--border);
-    overflow: hidden;
-    margin: 8px 0 14px;
-    display: none;
-  }
-  .loading-bar.active { display: block; }
-  .loading-bar::after {
-    content: '';
-    display: block;
-    width: 30%;
-    height: 100%;
-    background: var(--accent);
-    animation: slide 1.2s linear infinite;
-  }
-  @keyframes slide {
-    0%   { transform: translateX(-100%); }
-    100% { transform: translateX(400%); }
-  }
-
-  .kv {
-    display: grid;
-    grid-template-columns: 140px 1fr;
-    gap: 6px 14px;
-    font-size: 12px;
-  }
-  .kv dt { color: var(--text-dim); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; padding-top: 2px; }
-  .kv dd { color: var(--text); word-break: break-all; }
-
-  footer {
-    margin-top: 50px;
-    padding-top: 22px;
-    border-top: 1px solid var(--border);
-    color: var(--text-faded);
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  /* fade in for sections */
-  .results { display: none; animation: fadeUp 0.5s ease-out; }
-  .results.active { display: block; }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border-bright); }
-  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
-</style>
+    @media (max-width: 1150px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 820px) {
+      .topbar, .system { align-items: flex-start; flex-direction: column; }
+      .search-row { grid-template-columns: auto 1fr; }
+      .scan-btn { grid-column: 1 / -1; width: 100%; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .module-grid { grid-template-columns: 1fr; }
+      .module { grid-column: 1 / -1; }
+      .kv { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) { .stats { grid-template-columns: 1fr; } .app { width: min(100% - 18px, 1440px); } }
+  </style>
 </head>
 <body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brandmark">recon//</div>
+        <div class="tagline">client-side osint domain intelligence dashboard</div>
+      </div>
+      <div class="system">
+        <span id="utcClock">utc --:--:--</span>
+        <span class="online"><span class="dot"></span>system online</span>
+      </div>
+    </header>
 
-<div class="topbar">
-  <div class="brand">
-    <span class="brand-mark">recon//</span>
-    <span class="brand-sub">osint reconnaissance console v0.1</span>
-  </div>
-  <div class="status">
-    <span><span class="dot"></span> system online</span>
-    <span id="clock">--:--:--</span>
-  </div>
-</div>
+    <section class="hero cornered" aria-labelledby="headline">
+      <span class="label">[ initiate scan ]</span>
+      <h1 id="headline">TARGET ACQUISITION</h1>
+      <p class="lede">Enter a domain to compile DNS records, RDAP / WHOIS intelligence, passive subdomains, certificate transparency, IP network footprint, and HTTP fingerprinting into a live inline report.</p>
 
-<div class="container">
-  <section class="hero">
-    <div class="hero-label">[ initiate scan ]</div>
-    <h1 class="hero-title">target acquisition</h1>
-    <p class="hero-tag">Enter a domain to enumerate subdomains, resolve DNS records, fingerprint web servers, and pull WHOIS / netblock intelligence from public sources.</p>
-
-    <div class="search-row">
-      <span class="search-prefix">$</span>
-      <input id="target" type="text" placeholder="example.com" autocomplete="off" spellcheck="false" />
-      <button class="scan-btn" id="scan">scan</button>
-    </div>
-
-    <div class="quick">
-      <span class="quick-label">presets:</span>
-      <button data-domain="bornova.bel.tr">bornova.bel.tr</button>
-      <button data-domain="github.com">github.com</button>
-      <button data-domain="anthropic.com">anthropic.com</button>
-      <button data-domain="boun.edu.tr">boun.edu.tr</button>
-    </div>
-
-    <div class="loading-bar" id="loadbar"></div>
-    <div class="console" id="console"></div>
-  </section>
-
-  <div class="results" id="results">
-
-    <div class="summary" id="summary"></div>
-
-    <div class="grid">
-      <div class="module">
-        <div class="module-head">
-          <div class="module-title">domain intelligence</div>
-          <div class="module-meta">whois // rdap</div>
-        </div>
-        <div class="module-body" id="mod-whois"><div class="empty">no data</div></div>
+      <div class="search-row" role="search">
+        <span class="prompt" aria-hidden="true">$</span>
+        <input id="domainInput" type="text" autocomplete="off" spellcheck="false" placeholder="target.domain — e.g. github.com" aria-label="Domain to scan" />
+        <button id="scanBtn" class="scan-btn">SCAN</button>
       </div>
 
-      <div class="module">
-        <div class="module-head">
-          <div class="module-title">network footprint</div>
-          <div class="module-meta">asn // geo</div>
-        </div>
-        <div class="module-body" id="mod-network"><div class="empty">no data</div></div>
+      <div class="preset-row" aria-label="Preset domains">
+        <button class="chip" data-domain="bornova.bel.tr">bornova.bel.tr</button>
+        <button class="chip" data-domain="github.com">github.com</button>
+        <button class="chip" data-domain="anthropic.com">anthropic.com</button>
+        <button class="chip" data-domain="cloudflare.com">cloudflare.com</button>
+        <button class="chip" data-domain="openai.com">openai.com</button>
       </div>
 
-      <div class="module full">
-        <div class="module-head">
-          <div class="module-title">dns records</div>
-          <div class="module-meta">a // aaaa // mx // txt // ns // cname</div>
-        </div>
-        <div class="module-body" id="mod-dns"><div class="empty">no data</div></div>
+      <div id="loadingWrap" class="loading-wrap" aria-live="polite">
+        <div class="loading-bar"><span></span></div>
+        <div id="console" class="console" aria-label="Live scan console"></div>
       </div>
+    </section>
 
-      <div class="module full">
-        <div class="module-head">
-          <div class="module-title">subdomain enumeration</div>
-          <div class="module-meta" id="sub-count">0 unique</div>
-        </div>
-        <div class="module-body" id="mod-subs"><div class="empty">no data</div></div>
+    <section id="results" class="results" aria-live="polite">
+      <div id="stats" class="stats"></div>
+      <div class="module-grid">
+        <section class="module cornered" id="whoisModule"></section>
+        <section class="module cornered" id="networkModule"></section>
+        <section class="module full cornered" id="dnsModule"></section>
+        <section class="module full cornered" id="subdomainModule"></section>
+        <section class="module full cornered" id="certModule"></section>
+        <section class="module full cornered" id="httpModule"></section>
       </div>
+      <p class="footer-note">RECON runs entirely in your browser. Results depend on public endpoint availability, target CORS behavior, and passive data source freshness.</p>
+    </section>
+  </main>
 
-      <div class="module full">
-        <div class="module-head">
-          <div class="module-title">tls / certificate transparency</div>
-          <div class="module-meta">crt.sh</div>
-        </div>
-        <div class="module-body" id="mod-certs"><div class="empty">no data</div></div>
-      </div>
+  <script>
+    'use strict';
 
-      <div class="module full">
-        <div class="module-head">
-          <div class="module-title">http fingerprint</div>
-          <div class="module-meta">headers // technologies</div>
-        </div>
-        <div class="module-body" id="mod-http"><div class="empty">no data</div></div>
-      </div>
-    </div>
-  </div>
+    const $ = (selector) => document.querySelector(selector);
+    const input = $('#domainInput');
+    const scanBtn = $('#scanBtn');
+    const loadingWrap = $('#loadingWrap');
+    const consoleBox = $('#console');
+    const results = $('#results');
+    const statsBox = $('#stats');
 
-  <footer>
-    <span>recon//console — built for educational osint</span>
-    <span>data sources: crt.sh · dns.google · rdap · ip-api</span>
-  </footer>
-</div>
+    const DNS_TYPES = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME', 'SOA'];
+    const MAX_CERT_ROWS = 120;
+    const MAX_SUBDOMAIN_BADGES = 500;
 
-<script>
-/* ─── tiny clock ─── */
-function tick() {
-  const d = new Date();
-  const z = n => String(n).padStart(2, '0');
-  document.getElementById('clock').textContent =
-    `${z(d.getUTCHours())}:${z(d.getUTCMinutes())}:${z(d.getUTCSeconds())} UTC`;
-}
-setInterval(tick, 1000); tick();
+    const state = { logs: [], scanStartedAt: null };
 
-/* ─── log helper ─── */
-const consoleEl = document.getElementById('console');
-function log(msg, type='') {
-  const line = document.createElement('div');
-  line.className = 'log-line';
-  line.innerHTML = `<span class="prompt">›</span> <span class="${type}">${msg}</span>`;
-  consoleEl.appendChild(line);
-  consoleEl.scrollTop = consoleEl.scrollHeight;
-}
-function clearLog() { consoleEl.innerHTML = ''; }
-
-/* ─── helpers ─── */
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-function cleanDomain(raw) {
-  return raw.trim().toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '')
-    .replace(/^www\./, '')
-    .split('/')[0];
-}
-
-/* ─── data fetchers (all CORS-friendly public APIs, no keys) ─── */
-
-async function fetchDNS(domain, type) {
-  try {
-    const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=${type}`);
-    const j = await r.json();
-    return (j.Answer || []).map(a => ({ type, name: a.name, ttl: a.TTL, data: a.data }));
-  } catch (e) { return []; }
-}
-
-async function fetchAllDNS(domain) {
-  const types = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME', 'SOA'];
-  const results = await Promise.all(types.map(t => fetchDNS(domain, t)));
-  return results.flat();
-}
-
-async function fetchSubdomainsCrt(domain) {
-  try {
-    const r = await fetch(`https://crt.sh/?q=%25.${encodeURIComponent(domain)}&output=json`);
-    if (!r.ok) return { subs: [], certs: [] };
-    const j = await r.json();
-    const subSet = new Set();
-    const certs = [];
-    for (const row of j) {
-      const names = String(row.name_value || '').split(/\n/);
-      for (const n of names) {
-        const clean = n.trim().toLowerCase().replace(/^\*\./, '');
-        if (clean.endsWith(domain)) subSet.add(clean);
-      }
-      certs.push({
-        issuer: row.issuer_name,
-        common_name: row.common_name,
-        not_before: row.not_before,
-        not_after: row.not_after,
-        serial: row.serial_number,
-      });
+    function tickClock() {
+      const now = new Date();
+      $('#utcClock').textContent = `utc ${now.toISOString().slice(11, 19)}`;
     }
-    return { subs: Array.from(subSet).sort(), certs: certs.slice(0, 20) };
-  } catch (e) { return { subs: [], certs: [] }; }
-}
+    tickClock();
+    setInterval(tickClock, 1000);
 
-async function fetchRDAP(domain) {
-  try {
-    const r = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`);
-    if (!r.ok) return null;
-    return await r.json();
-  } catch (e) { return null; }
-}
+    function escapeHTML(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    }
 
-async function fetchIPInfo(ip) {
-  try {
-    const r = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`);
-    if (!r.ok) return null;
-    return await r.json();
-  } catch (e) { return null; }
-}
+    function cleanDomain(raw) {
+      const value = String(raw || '').trim().toLowerCase();
+      if (!value) return '';
+      let stripped = value
+        .replace(/^https?:\/\//, '').replace(/^www\./, '')
+        .split('/')[0].split('?')[0].split('#')[0].replace(/\.$/, '');
+      if (stripped.includes('@')) stripped = stripped.split('@').pop();
+      const valid = /^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(stripped)
+        && !stripped.split('.').some(label => label.startsWith('-') || label.endsWith('-'));
+      return valid ? stripped : '';
+    }
 
-async function fetchHTTPHead(domain) {
-  // CORS often blocks reads, but we try; use a fallback noscript probe
-  const out = { reachable: false, technologies: [], headers: {}, status: null, finalUrl: null };
-  try {
-    const r = await fetch(`https://${domain}`, { method: 'GET', mode: 'cors', redirect: 'follow' });
-    out.reachable = true;
-    out.status = r.status;
-    out.finalUrl = r.url;
-    r.headers.forEach((v, k) => out.headers[k] = v);
-  } catch (e) {
-    // fallback: no-cors, can't read but proves reachability
-    try {
-      await fetch(`https://${domain}`, { mode: 'no-cors' });
-      out.reachable = true;
-    } catch (_) {}
-  }
-  return out;
-}
+    function log(line, type = '') {
+      const stamp = state.scanStartedAt ? `${String(Math.floor((performance.now() - state.scanStartedAt) / 1000)).padStart(2, '0')}s` : '00s';
+      state.logs.push({ line: `[${stamp}] ${line}`, type });
+      state.logs = state.logs.slice(-120);
+      consoleBox.innerHTML = state.logs.map(item => `<div class="console-line ${escapeHTML(item.type)}">${escapeHTML(item.line)}</div>`).join('');
+      consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
 
-/* ─── tech detection from headers ─── */
-function detectTech(headers) {
-  const tech = [];
-  const h = Object.fromEntries(Object.entries(headers).map(([k,v]) => [k.toLowerCase(), v]));
+    function unique(values) {
+      return [...new Set(values.filter(Boolean).map(v => String(v).trim()).filter(Boolean))];
+    }
 
-  if (h['server']) tech.push({ name: h['server'], category: 'server' });
-  if (h['x-powered-by']) tech.push({ name: h['x-powered-by'], category: 'platform' });
-  if (h['x-aspnet-version']) tech.push({ name: 'ASP.NET ' + h['x-aspnet-version'], category: 'platform' });
-  if (h['x-drupal-cache']) tech.push({ name: 'Drupal', category: 'cms' });
-  if (h['x-generator']) tech.push({ name: h['x-generator'], category: 'cms' });
-  if (h['cf-ray'] || h['cf-cache-status']) tech.push({ name: 'Cloudflare', category: 'cdn' });
-  if (h['x-akamai-transformed']) tech.push({ name: 'Akamai', category: 'cdn' });
-  if (h['x-vercel-id']) tech.push({ name: 'Vercel', category: 'host' });
-  if (h['x-amz-cf-id']) tech.push({ name: 'AWS CloudFront', category: 'cdn' });
-  if (h['x-fastly-request-id']) tech.push({ name: 'Fastly', category: 'cdn' });
-  if (h['set-cookie'] && /phpsessid/i.test(h['set-cookie'])) tech.push({ name: 'PHP', category: 'language' });
-  if (h['set-cookie'] && /jsessionid/i.test(h['set-cookie'])) tech.push({ name: 'Java/JSP', category: 'language' });
-  if (h['strict-transport-security']) tech.push({ name: 'HSTS enabled', category: 'security' });
-  if (h['content-security-policy']) tech.push({ name: 'CSP enabled', category: 'security' });
-  return tech;
-}
+    function normalizeHost(host) {
+      return String(host || '').toLowerCase().replace(/^\*\./, '').replace(/\.$/, '').trim();
+    }
 
-/* ─── UI rendering ─── */
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function renderSummary(data) {
-  const el = $('summary');
-  const cards = [
-    { label: 'subdomains', value: data.subs.length, sub: 'discovered' },
-    { label: 'dns records', value: data.dns.length, sub: 'resolved' },
-    { label: 'ip addresses', value: data.ips.length, sub: 'unique a/aaaa' },
-    { label: 'mail servers', value: data.dns.filter(r => r.type === 'MX').length, sub: 'mx records' },
-    { label: 'tech detected', value: data.tech.length, sub: 'http fingerprint' },
-    { label: 'certs seen', value: data.certs.length, sub: 'ct logs' },
-  ];
-  el.innerHTML = cards.map(c => `
-    <div class="stat-card">
-      <div class="stat-label">${c.label}</div>
-      <div class="stat-value">${c.value}</div>
-      <div class="stat-sub">${c.sub}</div>
-    </div>
-  `).join('');
-}
+    /* ═══════════════════════════════════════════════════════════════
+       NETWORK LAYER — fetch with retry + multi-proxy fallback
+       ═══════════════════════════════════════════════════════════════ */
 
-function renderWHOIS(rdap) {
-  if (!rdap) return $('mod-whois').innerHTML = '<div class="empty">no rdap response</div>';
-  const events = (rdap.events || []).reduce((m, e) => (m[e.eventAction] = e.eventDate, m), {});
-  const reg = (rdap.entities || []).find(e => (e.roles || []).includes('registrar'));
-  const regName = reg?.vcardArray?.[1]?.find(v => v[0] === 'fn')?.[3] || 'unknown';
-  const ns = (rdap.nameservers || []).map(n => n.ldhName).filter(Boolean);
-  const status = (rdap.status || []).join(', ') || '—';
+    async function fetchDirect(url, timeoutMs = 12000, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(timeoutMs),
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        const err = new Error(`HTTP ${response.status}`);
+        err.status = response.status;
+        err.response = response;
+        throw err;
+      }
+      return response;
+    }
 
-  $('mod-whois').innerHTML = `
-    <dl class="kv">
-      <dt>handle</dt><dd>${esc(rdap.handle || '—')}</dd>
-      <dt>registrar</dt><dd>${esc(regName)}</dd>
-      <dt>status</dt><dd>${esc(status)}</dd>
-      <dt>registered</dt><dd>${esc(events.registration || '—')}</dd>
-      <dt>last updated</dt><dd>${esc(events['last changed'] || events['last update of rdap database'] || '—')}</dd>
-      <dt>expires</dt><dd>${esc(events.expiration || '—')}</dd>
-      <dt>nameservers</dt><dd>${ns.length ? ns.map(n => `<div>${esc(n)}</div>`).join('') : '—'}</dd>
-    </dl>
-  `;
-}
+    /* Cache-busting: append a unique timestamp/nonce to bypass any
+       intermediate proxy caches that might be returning stale errors. */
+    function withCacheBust(url) {
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}_cb=${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
+    }
 
-async function renderNetwork(ips) {
-  if (!ips.length) return $('mod-network').innerHTML = '<div class="empty">no resolvable a/aaaa records</div>';
-  const lookups = await Promise.all(ips.slice(0, 5).map(fetchIPInfo));
-  const rows = lookups.filter(Boolean).map(d => `
-    <tr>
-      <td>${esc(d.ip)}</td>
-      <td>${esc(d.connection?.org || d.connection?.isp || '—')}</td>
-      <td>${esc(d.connection?.asn ? 'AS' + d.connection.asn : '—')}</td>
-      <td>${esc([d.city, d.region, d.country].filter(Boolean).join(', ') || '—')}</td>
-    </tr>
-  `).join('');
-  $('mod-network').innerHTML = rows
-    ? `<table><thead><tr><th>ip</th><th>organization</th><th>asn</th><th>geolocation</th></tr></thead><tbody>${rows}</tbody></table>`
-    : '<div class="empty">no enrichment data</div>';
-}
+    /* Six proxy candidates — direct first, then five public proxies.
+       More candidates = higher chance one of them isn't blocked / rate-limited. */
+    function proxyCandidates(url) {
+      const busted = withCacheBust(url);
+      return [
+        { name: 'direct', url: busted },
+        { name: 'corsproxy.io', url: `https://corsproxy.io/?url=${encodeURIComponent(busted)}` },
+        { name: 'allorigins.win', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(busted)}` },
+        { name: 'codetabs', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(busted)}` },
+        { name: 'proxy.cors.sh', url: `https://proxy.cors.sh/${busted}` },
+        { name: 'thingproxy', url: `https://thingproxy.freeboard.io/fetch/${busted}` },
+      ];
+    }
 
-function renderDNS(records) {
-  if (!records.length) return $('mod-dns').innerHTML = '<div class="empty">no records</div>';
-  const typeColor = { A: 'green', AAAA: 'green', MX: 'info', TXT: 'warn', NS: 'info', CNAME: 'info', SOA: '' };
-  const rows = records.map(r => `
-    <tr>
-      <td><span class="badge ${typeColor[r.type] || ''}">${r.type}</span></td>
-      <td>${esc(r.name)}</td>
-      <td>${esc(r.ttl)}</td>
-      <td>${esc(r.data)}</td>
-    </tr>
-  `).join('');
-  $('mod-dns').innerHTML = `<table><thead><tr><th>type</th><th>name</th><th>ttl</th><th>data</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
+    /* Smart fetch with rate-limit-aware retry. If we get HTTP 429 from a 
+       provider, wait and try again before falling through to next proxy. */
+    async function fetchWithFallback(url, timeoutMs = 12000, options = {}) {
+      const errors = [];
+      for (const candidate of proxyCandidates(url)) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const response = await fetchDirect(candidate.url, timeoutMs, options);
+            return {
+              response,
+              viaProxy: candidate.name !== 'direct',
+              proxyName: candidate.name,
+              attemptedURL: candidate.url,
+              previousErrors: errors,
+            };
+          } catch (error) {
+            const tag = attempt === 1 ? candidate.name : `${candidate.name} (retry)`;
+            errors.push(`${tag}: ${error.message}`);
+            // For 429 specifically, back off before retry
+            if (error.status === 429 && attempt === 1) {
+              await sleep(800 + Math.random() * 600);
+              continue;
+            }
+            break; // move on to next candidate
+          }
+        }
+      }
+      throw new Error(errors.join(' | ') || 'request failed');
+    }
 
-function renderSubs(subs, target) {
-  $('sub-count').textContent = `${subs.length} unique`;
-  if (!subs.length) return $('mod-subs').innerHTML = '<div class="empty">no subdomains found in ct logs</div>';
-  $('mod-subs').innerHTML = `
-    <div class="pill-row">
-      ${subs.map(s => `<span class="badge ${s === target ? 'green' : ''}">${esc(s)}</span>`).join('')}
-    </div>
-  `;
-}
+    async function getJSON(url, timeoutMs = 12000, options = {}) {
+      const { response, viaProxy, proxyName } = await fetchWithFallback(url, timeoutMs, options);
+      const text = await response.text();
+      try {
+        return { data: JSON.parse(text), viaProxy, proxyName };
+      } catch (e) {
+        throw new Error(`invalid JSON via ${proxyName}: ${text.slice(0, 80)}`);
+      }
+    }
 
-function renderCerts(certs) {
-  if (!certs.length) return $('mod-certs').innerHTML = '<div class="empty">no certificates</div>';
-  const rows = certs.map(c => {
-    const exp = c.not_after ? new Date(c.not_after) : null;
-    const expired = exp && exp < new Date();
-    return `
-      <tr>
-        <td>${esc(c.common_name || '—')}</td>
-        <td>${esc(c.issuer || '—')}</td>
-        <td>${esc((c.not_before || '').split('T')[0])}</td>
-        <td>${esc((c.not_after || '').split('T')[0])} ${expired ? '<span class="badge red">expired</span>' : '<span class="badge green">valid</span>'}</td>
-      </tr>
-    `;
-  }).join('');
-  $('mod-certs').innerHTML = `<table><thead><tr><th>common name</th><th>issuer</th><th>not before</th><th>not after</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
+    async function getText(url, timeoutMs = 12000, options = {}) {
+      const { response, viaProxy, proxyName } = await fetchWithFallback(url, timeoutMs, options);
+      return { text: await response.text(), response, viaProxy, proxyName };
+    }
 
-function renderHTTP(http, tech) {
-  const headerRows = Object.entries(http.headers || {}).map(([k, v]) => `
-    <tr><td style="width:200px;color:var(--text-dim);">${esc(k)}</td><td>${esc(v)}</td></tr>
-  `).join('');
+    /* ═══════════════════════════════════════════════════════════════
+       DATA SOURCES
+       ═══════════════════════════════════════════════════════════════ */
 
-  const techHtml = tech.length
-    ? `<div class="pill-row" style="margin-bottom:14px;">
-        ${tech.map(t => `<span class="badge green">${esc(t.name)} <span style="color:var(--text-faded);margin-left:4px;">${esc(t.category)}</span></span>`).join('')}
-      </div>`
-    : '<div class="empty" style="text-align:left;padding:0 0 12px;">no technologies fingerprinted (CORS may have blocked headers — try CLI variant for full data)</div>';
+    async function fetchDNS(domain) {
+      const records = [];
+      const errors = [];
+      await Promise.all(DNS_TYPES.map(async (type) => {
+        try {
+          const url = `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=${type}`;
+          const { data } = await getJSON(url, 12000);
+          const answers = Array.isArray(data.Answer) ? data.Answer : [];
+          answers.forEach(answer => records.push({ type, name: answer.name || domain, ttl: answer.TTL ?? '', data: answer.data || '', status: data.Status ?? 0 }));
+          log(`› dns ${type}: ${answers.length} record(s)`);
+        } catch (error) {
+          errors.push(`${type}: ${error.message}`);
+          log(`› dns ${type}: failed (${error.message})`, 'warn');
+        }
+      }));
+      return { records, errors };
+    }
 
-  const reachBadge = http.reachable
-    ? `<span class="badge green">reachable</span>`
-    : `<span class="badge red">unreachable</span>`;
+    /* crt.sh — with retry + alternative query format on first failure */
+    async function fetchCrtSh(domain) {
+      log('›   → crt.sh certificate transparency...');
+      log('›     crt.sh can be slow; trying multiple query formats with retry...', 'info');
 
-  $('mod-http').innerHTML = `
-    <dl class="kv" style="margin-bottom:18px;">
-      <dt>status</dt><dd>${reachBadge} ${http.status ? '<span class="badge info">HTTP '+http.status+'</span>' : ''}</dd>
-      <dt>final url</dt><dd>${esc(http.finalUrl || '—')}</dd>
-    </dl>
+      // Try 3 different query formats — sometimes one works when the others 5xx
+      const queries = [
+        `https://crt.sh/?q=%25.${encodeURIComponent(domain)}&output=json`,
+        `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json`,
+        `https://crt.sh/?Identity=%25.${encodeURIComponent(domain)}&output=json`,
+      ];
 
-    <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">technologies</div>
-    ${techHtml}
+      for (let i = 0; i < queries.length; i++) {
+        try {
+          log(`›     attempt ${i + 1}/3...`);
+          const { data } = await getJSON(queries[i], 35000);
+          const rows = Array.isArray(data) ? data : [];
+          if (!rows.length && i < queries.length - 1) {
+            log(`›     attempt ${i + 1}: empty response, trying alternate format`, 'warn');
+            await sleep(800);
+            continue;
+          }
+          const certs = rows.map(row => ({
+            commonName: row.common_name || '',
+            issuer: row.issuer_name || '',
+            notBefore: row.not_before || '',
+            notAfter: row.not_after || '',
+            nameValue: row.name_value || ''
+          }));
+          const subs = [];
+          rows.forEach(row => String(row.name_value || '').split(/\n|,/).forEach(name => {
+            const host = normalizeHost(name);
+            if (host.endsWith(`.${domain}`) || host === domain) subs.push(host);
+          }));
+          log(`›     ✓ crt.sh succeeded: ${unique(subs).length} subs, ${rows.length} cert rows`, 'ok');
+          return { subs: unique(subs), certs, error: null };
+        } catch (error) {
+          log(`›     attempt ${i + 1} failed: ${error.message.slice(0, 100)}`, 'warn');
+          if (i < queries.length - 1) await sleep(1200);
+        }
+      }
+      log(`›     ✗ crt.sh exhausted all attempts`, 'err');
+      return { subs: [], certs: [], error: 'all crt.sh query formats failed' };
+    }
 
-    ${headerRows
-      ? `<div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">response headers</div>
-         <table>${headerRows}</table>`
-      : ''}
-  `;
-}
+    async function fetchHackerTarget(domain) {
+      try {
+        log('›   → hackertarget.com hostsearch...');
+        const url = `https://api.hackertarget.com/hostsearch/?q=${encodeURIComponent(domain)}`;
+        const { text } = await getText(url, 15000);
+        if (/error|invalid|API count exceeded/i.test(text)) throw new Error(text.slice(0, 120));
+        const subs = text.split('\n').map(line => normalizeHost(line.split(',')[0])).filter(host => host === domain || host.endsWith(`.${domain}`));
+        log(`›     ✓ HackerTarget: ${unique(subs).length} subs`, 'ok');
+        return { subs: unique(subs), error: null };
+      } catch (error) {
+        log(`›     ✗ HackerTarget failed: ${error.message.slice(0, 100)}`, 'warn');
+        return { subs: [], error: error.message };
+      }
+    }
 
-/* ─── orchestrator ─── */
-async function runScan(domainRaw) {
-  const domain = cleanDomain(domainRaw);
-  if (!domain || !domain.includes('.')) {
-    alert('Enter a valid domain (e.g. example.com)');
-    return;
-  }
+    /* AlienVault OTX with explicit 429 handling and exponential backoff */
+    async function fetchAlienVault(domain) {
+      log('›   → alienvault otx passive dns...');
+      const url = `https://otx.alienvault.com/api/v1/indicators/domain/${encodeURIComponent(domain)}/passive_dns`;
 
-  const btn = $('scan');
-  btn.disabled = true;
-  btn.textContent = 'scanning...';
-  $('loadbar').classList.add('active');
-  consoleEl.classList.add('active');
-  clearLog();
-  $('results').classList.remove('active');
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          if (attempt > 1) {
+            const backoff = Math.min(2000 * attempt, 5000);
+            log(`›     OTX attempt ${attempt}/3 after ${backoff}ms backoff...`, 'info');
+            await sleep(backoff);
+          }
+          const { data } = await getJSON(url, 15000);
+          const rows = Array.isArray(data.passive_dns) ? data.passive_dns : [];
+          const subs = rows.map(row => normalizeHost(row.hostname || row.address || '')).filter(host => host === domain || host.endsWith(`.${domain}`));
+          log(`›     ✓ OTX: ${unique(subs).length} subs`, 'ok');
+          return { subs: unique(subs), rows, error: null };
+        } catch (error) {
+          const is429 = /429/.test(error.message);
+          if (is429 && attempt < 3) {
+            log(`›     OTX rate-limited (429), backing off...`, 'warn');
+            continue;
+          }
+          if (attempt === 3) {
+            log(`›     ✗ OTX exhausted retries: ${error.message.slice(0, 100)}`, 'warn');
+            return { subs: [], rows: [], error: error.message };
+          }
+        }
+      }
+      return { subs: [], rows: [], error: 'all retries failed' };
+    }
 
-  log(`target locked: <b>${domain}</b>`);
-  log('initiating multi-vector enumeration...');
+    async function fetchSubdomains(domain) {
+      log('› [02] enumerating subdomains across multiple sources...');
+      const [crt, hackerTarget, alienVault] = await Promise.all([
+        fetchCrtSh(domain),
+        fetchHackerTarget(domain),
+        fetchAlienVault(domain)
+      ]);
+      const subs = unique([domain, ...crt.subs, ...hackerTarget.subs, ...alienVault.subs]).sort();
+      return { subs, crt, hackerTarget, alienVault, certs: crt.certs };
+    }
 
-  // run in parallel
-  log('[01] resolving dns records via dns.google...');
-  log('[02] querying crt.sh certificate transparency...');
-  log('[03] fetching rdap whois data...');
-  log('[04] fingerprinting http surface...');
+    async function fetchRDAP(domain, dnsRecords) {
+      try {
+        log('› [03] querying rdap / whois intelligence...');
+        const url = `https://rdap.org/domain/${encodeURIComponent(domain)}`;
+        const { data } = await getJSON(url, 15000);
+        if (!data || data.errorCode || (data.rdapConformance === undefined && !data.objectClassName)) {
+          throw new Error('empty rdap response');
+        }
+        return { mode: 'rdap', data, synthesized: false, error: null };
+      } catch (error) {
+        const ns = dnsRecords.filter(r => r.type === 'NS').map(r => r.data);
+        const soa = dnsRecords.find(r => r.type === 'SOA');
+        const primaryNS = soa?.data?.split(/\s+/)[0] || ns[0] || '';
+        const serial = soa?.data?.split(/\s+/)[2] || '';
+        log('›     no public rdap response; synthesizing from DNS data', 'warn');
+        return {
+          mode: 'synthesized', synthesized: true, error: error.message,
+          data: { domain, nameservers: ns, primaryNS, soa: soa?.data || '', serial }
+        };
+      }
+    }
 
-  const [dns, ctData, rdap, http] = await Promise.all([
-    fetchAllDNS(domain),
-    fetchSubdomainsCrt(domain),
-    fetchRDAP(domain),
-    fetchHTTPHead(domain),
-  ]);
+    function compactError(message) { return String(message || '').replace(/\s+/g, ' ').slice(0, 180); }
 
-  const ips = Array.from(new Set(
-    dns.filter(r => r.type === 'A' || r.type === 'AAAA').map(r => r.data)
-  ));
-  const tech = detectTech(http.headers);
+    async function fetchIPInfoFor(ip) {
+      const attempts = [];
+      async function tryProvider(label, url, mapper, timeoutMs = 10000, useFallback = false) {
+        try {
+          const result = useFallback ? await getJSON(url, timeoutMs) : { data: await (await fetchDirect(url, timeoutMs)).json() };
+          const mapped = mapper(result.data || {});
+          if (!mapped || mapped.error) throw new Error(mapped?.error || 'empty response');
+          return { ...mapped, ip, source: label };
+        } catch (error) {
+          attempts.push(`${label}: ${compactError(error.message)}`);
+          return null;
+        }
+      }
+      const ipwho = await tryProvider('ipwho.is', `https://ipwho.is/${encodeURIComponent(ip)}`, data => {
+        if (!data || data.success === false) return { error: data?.message || 'no data' };
+        return { asn: data.connection?.asn || '', org: data.connection?.org || data.connection?.isp || '', country: data.country || '', city: data.city || '', region: data.region || '', timezone: data.timezone?.id || '', latitude: data.latitude || '', longitude: data.longitude || '' };
+      });
+      if (ipwho) return ipwho;
 
-  log(`dns: <span class="ok">${dns.length} records</span>`, 'ok');
-  log(`subdomains: <span class="ok">${ctData.subs.length} unique</span>`, 'ok');
-  log(`whois: <span class="${rdap ? 'ok' : 'warn'}">${rdap ? 'received' : 'no data'}</span>`);
-  log(`http: <span class="${http.reachable ? 'ok' : 'err'}">${http.reachable ? 'reachable' : 'unreachable'}</span>`);
-  log('rendering report...', 'ok');
+      const ipapi = await tryProvider('ipapi.co', `https://ipapi.co/${encodeURIComponent(ip)}/json/`, data => {
+        if (!data || data.error) return { error: data?.reason || data?.message || 'no data' };
+        return { asn: data.asn || '', org: data.org || data.network || '', country: data.country_name || data.country || '', city: data.city || '', region: data.region || '', timezone: data.timezone || '', latitude: data.latitude || '', longitude: data.longitude || '' };
+      });
+      if (ipapi) return ipapi;
 
-  // render
-  const aggregate = { dns, subs: ctData.subs, certs: ctData.certs, ips, tech };
-  renderSummary(aggregate);
-  renderWHOIS(rdap);
-  await renderNetwork(ips);
-  renderDNS(dns);
-  renderSubs(ctData.subs, domain);
-  renderCerts(ctData.certs);
-  renderHTTP(http, tech);
+      const ipwhoisApp = await tryProvider('ipwhois.app', `https://ipwhois.app/json/${encodeURIComponent(ip)}`, data => {
+        if (!data || data.success === false) return { error: data?.message || 'no data' };
+        return { asn: data.asn || '', org: data.org || data.isp || '', country: data.country || '', city: data.city || '', region: data.region || '', timezone: data.timezone || '', latitude: data.latitude || '', longitude: data.longitude || '' };
+      });
+      if (ipwhoisApp) return ipwhoisApp;
 
-  $('results').classList.add('active');
-  $('loadbar').classList.remove('active');
-  btn.disabled = false;
-  btn.textContent = 'scan';
-  log('scan complete.', 'ok');
-}
+      const ipApi = await tryProvider('ip-api.com via proxy', `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,country,regionName,city,lat,lon,timezone,as,org,query`, data => {
+        if (!data || data.status !== 'success') return { error: data?.message || 'ip-api failed' };
+        return { asn: data.as || '', org: data.org || '', country: data.country || '', city: data.city || '', region: data.regionName || '', timezone: data.timezone || '', latitude: data.lat || '', longitude: data.lon || '' };
+      }, 10000, true);
+      if (ipApi) return ipApi;
 
-/* ─── events ─── */
-$('scan').addEventListener('click', () => runScan($('target').value));
-$('target').addEventListener('keydown', e => { if (e.key === 'Enter') runScan(e.target.value); });
-document.querySelectorAll('.quick button').forEach(b => {
-  b.addEventListener('click', () => {
-    $('target').value = b.dataset.domain;
-    runScan(b.dataset.domain);
-  });
-});
-</script>
+      return { ip, source: 'unresolved', error: attempts.join(' | ') || 'all lookup providers failed' };
+    }
+
+    async function fetchNetworkFootprint(dnsRecords) {
+      log('› [04] enriching resolved IPs with geo / ASN context...');
+      const ips = unique(dnsRecords.filter(r => r.type === 'A' || r.type === 'AAAA').map(r => r.data));
+      const rows = await Promise.all(ips.map(fetchIPInfoFor));
+      log(`›     enriched ${rows.filter(r => !r.error).length}/${ips.length} IP address(es)`, 'ok');
+      return { ips, rows };
+    }
+
+    function headersToObject(headers) {
+      const obj = {};
+      headers.forEach((value, key) => { obj[key] = value; });
+      return obj;
+    }
+
+    function detectTechnologies(headers, html, finalURL) {
+      const lowerHTML = String(html || '').toLowerCase();
+      const headerText = Object.entries(headers || {}).map(([k, v]) => `${k}: ${v}`).join('\n').toLowerCase();
+      const findings = [];
+      const add = (name, category, evidence) => findings.push({ name, category, evidence });
+
+      const tests = [
+        ['Cloudflare', 'cdn', () => /cf-ray|cloudflare|__cf_bm|cf-cache-status/.test(headerText + lowerHTML)],
+        ['Akamai', 'cdn', () => /akamai|akamai-ghost|x-akamai/.test(headerText + lowerHTML)],
+        ['Fastly', 'cdn', () => /fastly|x-served-by|x-cache-hits/.test(headerText)],
+        ['Nginx', 'server', () => /server:\s*nginx/.test(headerText)],
+        ['Apache', 'server', () => /server:\s*apache/.test(headerText)],
+        ['Microsoft IIS', 'server', () => /server:\s*microsoft-iis|x-aspnet-version/.test(headerText)],
+        ['Express', 'server', () => /x-powered-by:\s*express/.test(headerText)],
+        ['PHP', 'language', () => /x-powered-by:\s*php|phpsessid/.test(headerText)],
+        ['ASP.NET', 'language', () => /asp\.net|aspxauth/.test(headerText)],
+        ['WordPress', 'cms', () => /wp-content|wp-includes|wordpress|wp-json/.test(lowerHTML + headerText)],
+        ['Drupal', 'cms', () => /drupal|x-drupal-cache|sites\/default\/files/.test(lowerHTML + headerText)],
+        ['Joomla', 'cms', () => /joomla|\/media\/system\/js\//.test(lowerHTML)],
+        ['React', 'javascript', () => /react|data-reactroot|__next_data__|vite\/client/.test(lowerHTML)],
+        ['Next.js', 'javascript', () => /__next_data__|x-nextjs-cache|next-router/.test(lowerHTML + headerText)],
+        ['jQuery', 'javascript', () => /jquery(?:\.min)?\.js|jquery/.test(lowerHTML)],
+        ['Bootstrap', 'ui', () => /bootstrap(?:\.min)?\.(?:css|js)|class="[^"]*\bcontainer\b/.test(lowerHTML)],
+        ['Google Analytics', 'analytics', () => /google-analytics|gtag\(|ga\('|analytics\.js/.test(lowerHTML)],
+        ['Google Tag Manager', 'analytics', () => /googletagmanager|gtm\.js|gtm-/.test(lowerHTML)],
+        ['reCAPTCHA', 'security', () => /recaptcha|www\.google\.com\/recaptcha/.test(lowerHTML)],
+        ['HSTS', 'security', () => /strict-transport-security/.test(headerText)],
+        ['CSP', 'security', () => /content-security-policy/.test(headerText)]
+      ];
+
+      tests.forEach(([name, category, fn]) => { try { if (fn()) add(name, category, 'signature match'); } catch (_) {} });
+
+      const server = headers.server;
+      const poweredBy = headers['x-powered-by'];
+      if (server && !findings.some(f => f.name.toLowerCase() === String(server).toLowerCase())) add(String(server), 'server', 'Server header');
+      if (poweredBy) add(String(poweredBy), 'language', 'X-Powered-By header');
+      if (/^https:\/\//.test(finalURL || '')) add('HTTPS', 'security', 'final URL');
+
+      const map = new Map();
+      findings.forEach(f => map.set(`${f.name}|${f.category}`, f));
+      return [...map.values()].sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+    }
+
+    /* HTTP fingerprint with multiple URL variations + UA spoofing through 
+       proxies that support it (some Cloudflare-protected sites respond
+       differently to non-browser UAs). */
+    async function fetchHTTPFingerprint(domain) {
+      log('› [05] fingerprinting HTTP surface...');
+      // Try www variant too — sometimes apex blocks but www works (or vice versa)
+      const candidates = [
+        `https://${domain}`,
+        `https://www.${domain}`,
+        `http://${domain}`,
+      ];
+      let lastError = '';
+      for (const url of candidates) {
+        try {
+          log(`›     trying ${url}...`);
+          const { text, response, viaProxy, proxyName } = await getText(url, 18000, { redirect: 'follow' });
+          const headers = headersToObject(response.headers);
+          const technologies = detectTechnologies(headers, text.slice(0, 600000), response.url || url);
+          log(`›     ✓ ${url}: HTTP ${response.status}, ${technologies.length} tech signatures${viaProxy ? ` (via ${proxyName})` : ''}`, 'ok');
+          return { ok: true, attemptedURL: url, finalURL: response.url || url, status: response.status, statusText: response.statusText, viaProxy, proxyName, headers, technologies, bodySize: text.length, error: null };
+        } catch (error) {
+          lastError = error.message;
+          log(`›     ✗ ${url} failed`, 'warn');
+        }
+      }
+      return { ok: false, headers: {}, technologies: [], error: lastError, finalURL: '', status: '', statusText: '' };
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RENDERING
+       ═══════════════════════════════════════════════════════════════ */
+
+    function pill(text, cls = '') { return `<span class="pill ${cls}">${escapeHTML(text)}</span>`; }
+
+    function renderStats(data) {
+      const mailServers = unique(data.dns.records.filter(r => r.type === 'MX').map(r => r.data));
+      const certCount = data.subdomains.certs.length;
+      const items = [
+        ['subdomains', data.subdomains.subs.length, 'merged from crt.sh, HackerTarget, OTX'],
+        ['dns records', data.dns.records.length, 'A / AAAA / MX / TXT / NS / CNAME / SOA'],
+        ['ip addresses', data.network.ips.length, 'resolved A and AAAA records'],
+        ['mail servers', mailServers.length, 'MX endpoints discovered'],
+        ['technologies', data.http.technologies.length, 'header + HTML signatures'],
+        ['certificates', certCount, 'crt.sh rows observed']
+      ];
+      statsBox.innerHTML = items.map(([label, value, sub]) => `
+        <article class="stat-card">
+          <div class="stat-label">${escapeHTML(label)}</div>
+          <div class="stat-value">${escapeHTML(value)}</div>
+          <div class="stat-sub">${escapeHTML(sub)}</div>
+        </article>
+      `).join('');
+    }
+
+    function moduleShell(title, source, body) {
+      return `<div class="module-head"><h2 class="module-title">${escapeHTML(title)}</h2><div class="source">${escapeHTML(source)}</div></div>${body}`;
+    }
+
+    function renderWhois(data) {
+      const w = data.whois;
+      if (w.synthesized) {
+        $('#whoisModule').innerHTML = moduleShell('domain intelligence', 'RDAP fallback / DNS synthesis', `
+          <div class="notice">Synthesized from DNS — no public RDAP response for this TLD or endpoint result. This panel is best-effort and not a full WHOIS record.</div>
+          <dl class="kv">
+            <dt>domain</dt><dd>${escapeHTML(w.data.domain)}</dd>
+            <dt>primary nameserver</dt><dd>${escapeHTML(w.data.primaryNS || 'unknown')}</dd>
+            <dt>nameservers</dt><dd>${w.data.nameservers?.length ? w.data.nameservers.map(x => pill(x, 'blue')).join('') : '<span class="empty">no NS records</span>'}</dd>
+            <dt>SOA serial</dt><dd>${escapeHTML(w.data.serial || 'unknown')}</dd>
+            <dt>SOA record</dt><dd>${escapeHTML(w.data.soa || 'not observed')}</dd>
+          </dl>
+        `);
+        return;
+      }
+      const rdap = w.data || {};
+      const events = Array.isArray(rdap.events) ? rdap.events : [];
+      const entities = Array.isArray(rdap.entities) ? rdap.entities : [];
+      const eventLine = events.map(e => `${e.eventAction}: ${e.eventDate}`).slice(0, 7).join('\n');
+      const ns = (rdap.nameservers || []).map(n => n.ldhName || n.unicodeName).filter(Boolean);
+      const registrar = entities.map(e => {
+        const roles = Array.isArray(e.roles) ? e.roles.join(', ') : '';
+        const vcard = Array.isArray(e.vcardArray?.[1]) ? e.vcardArray[1] : [];
+        const fn = vcard.find(item => item[0] === 'fn')?.[3] || '';
+        return [roles, fn].filter(Boolean).join(': ');
+      }).filter(Boolean).slice(0, 5);
+      $('#whoisModule').innerHTML = moduleShell('domain intelligence', 'rdap.org/domain', `
+        <dl class="kv">
+          <dt>handle</dt><dd>${escapeHTML(rdap.handle || 'unknown')}</dd>
+          <dt>ldh name</dt><dd>${escapeHTML(rdap.ldhName || data.domain)}</dd>
+          <dt>status</dt><dd>${(rdap.status || []).map(s => pill(s)).join('') || '<span class="empty">no status</span>'}</dd>
+          <dt>events</dt><dd>${eventLine ? `<pre style="margin:0;white-space:pre-wrap;color:inherit">${escapeHTML(eventLine)}</pre>` : '<span class="empty">no events</span>'}</dd>
+          <dt>nameservers</dt><dd>${ns.length ? ns.map(n => pill(n, 'blue')).join('') : '<span class="empty">no rdap nameservers</span>'}</dd>
+          <dt>entities</dt><dd>${registrar.length ? registrar.map(e => pill(e, 'dim')).join('') : '<span class="empty">no public entity details</span>'}</dd>
+        </dl>
+      `);
+    }
+
+    function renderNetwork(data) {
+      const rows = data.network.rows || [];
+      const body = rows.length ? `
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>IP</th><th>ASN / org</th><th>location</th><th>source</th></tr></thead>
+            <tbody>${rows.map(row => `
+              <tr>
+                <td>${escapeHTML(row.ip)}</td>
+                <td>${row.error ? `<span class="pill red">lookup failed</span><br>${escapeHTML(row.error)}` : `${escapeHTML(row.asn || 'unknown')}<br>${escapeHTML(row.org || '')}`}</td>
+                <td>${escapeHTML([row.city, row.region, row.country].filter(Boolean).join(', ') || 'unknown')}<br><span style="color:var(--dim)">${escapeHTML(row.timezone || '')}</span></td>
+                <td>${escapeHTML(row.source || '')}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div class="empty">no A/AAAA records resolved; network footprint unavailable</div>';
+      $('#networkModule').innerHTML = moduleShell('network footprint', 'ipwho.is → ipapi.co → ipwhois.app → ip-api fallback', body);
+    }
+
+    function dnsClass(type) {
+      if (type === 'A' || type === 'AAAA') return '';
+      if (['MX', 'NS', 'CNAME'].includes(type)) return 'blue';
+      if (type === 'TXT') return 'amber';
+      return 'dim';
+    }
+
+    function renderDNS(data) {
+      const rows = data.dns.records || [];
+      const body = rows.length ? `
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>type</th><th>name</th><th>ttl</th><th>value</th></tr></thead>
+            <tbody>${rows.map(r => `<tr><td>${pill(r.type, dnsClass(r.type))}</td><td>${escapeHTML(r.name)}</td><td>${escapeHTML(r.ttl)}</td><td>${escapeHTML(r.data)}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>` : '<div class="empty">no dns answers returned by dns.google</div>';
+      $('#dnsModule').innerHTML = moduleShell('dns records', 'dns.google DoH JSON API', body);
+    }
+
+    function sourcePill(label, source) {
+      const ok = !source?.error;
+      const cls = ok ? '' : 'amber';
+      const detail = ok
+        ? `${label}: ok${Array.isArray(source?.subs) ? ` / ${source.subs.length} host(s)` : ''}`
+        : `${label}: limited`;
+      return pill(detail, cls);
+    }
+
+    function renderSubdomains(data) {
+      const subs = data.subdomains.subs || [];
+      const visible = subs.slice(0, MAX_SUBDOMAIN_BADGES);
+      const overflow = subs.length > visible.length ? `<div class="notice">Showing ${visible.length} of ${subs.length} discovered subdomains to keep the browser responsive.</div>` : '';
+      const sourceStatus = `<div class="notice" style="margin-bottom:12px">Passive-source status: ${sourcePill('crt.sh', data.subdomains.crt)} ${sourcePill('HackerTarget', data.subdomains.hackerTarget)} ${sourcePill('AlienVault OTX', data.subdomains.alienVault)}</div>`;
+      const body = subs.length
+        ? `${sourceStatus}${overflow}<div class="badges">${visible.map(s => pill(s, s === data.domain ? 'target' : '')).join('')}</div>`
+        : `${sourceStatus}<div class="empty">no subdomains returned from passive sources</div>`;
+      $('#subdomainModule').innerHTML = moduleShell('subdomain enumeration', 'crt.sh + HackerTarget + AlienVault OTX', body);
+    }
+
+    function isExpired(dateText) { const time = Date.parse(dateText); return Number.isFinite(time) && time < Date.now(); }
+
+    function renderCerts(data) {
+      const certs = data.subdomains.certs || [];
+      const rows = certs.slice(0, MAX_CERT_ROWS);
+      const body = rows.length ? `
+        ${certs.length > rows.length ? `<div class="notice">Showing ${rows.length} of ${certs.length} crt.sh rows. Full dataset was used for subdomain extraction.</div>` : ''}
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>common name</th><th>issuer</th><th>not before</th><th>not after</th><th>status</th></tr></thead>
+            <tbody>${rows.map(c => {
+              const expired = isExpired(c.notAfter);
+              return `<tr><td>${escapeHTML(c.commonName || c.nameValue || 'unknown')}</td><td>${escapeHTML(c.issuer || 'unknown')}</td><td>${escapeHTML(c.notBefore || 'unknown')}</td><td>${escapeHTML(c.notAfter || 'unknown')}</td><td>${pill(expired ? 'expired' : 'valid / unexpired', expired ? 'red' : '')}</td></tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>` : `<div class="empty">no certificates returned from crt.sh${data.subdomains.crt?.error ? ' (all retry attempts exhausted)' : ''}</div>`;
+      $('#certModule').innerHTML = moduleShell('tls / certificate transparency', 'crt.sh output=json', body);
+    }
+
+    function renderHTTP(data) {
+      const http = data.http;
+      const headerRows = Object.entries(http.headers || {});
+      const techByCat = http.technologies.reduce((acc, tech) => { acc[tech.category] ||= []; acc[tech.category].push(tech.name); return acc; }, {});
+      const techHTML = Object.keys(techByCat).length
+        ? Object.entries(techByCat).map(([cat, names]) => `<div style="margin-bottom:8px"><span style="color:var(--green-dim);font-size:11px;text-transform:uppercase;letter-spacing:.1em">${escapeHTML(cat)}</span><br>${names.map(n => pill(n)).join('')}</div>`).join('')
+        : '<div class="empty">no technology signatures detected</div>';
+
+      const body = http.ok ? `
+        <dl class="kv" style="margin-bottom:16px">
+          <dt>status</dt><dd>${pill(`HTTP ${http.status} ${http.statusText || ''}`.trim(), http.status >= 400 ? 'red' : '')}</dd>
+          <dt>attempted URL</dt><dd>${escapeHTML(http.attemptedURL)}</dd>
+          <dt>final URL</dt><dd>${escapeHTML(http.finalURL || 'unknown')}</dd>
+          <dt>CORS mode</dt><dd>${escapeHTML(http.viaProxy ? `read via ${http.proxyName || 'CORS proxy'} fallback` : 'direct browser fetch')}</dd>
+          <dt>body size</dt><dd>${escapeHTML(http.bodySize || 0)} bytes sampled</dd>
+        </dl>
+        ${techHTML}
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>header</th><th>value</th></tr></thead>
+            <tbody>${headerRows.length ? headerRows.map(([key, value]) => `<tr><td>${escapeHTML(key)}</td><td>${escapeHTML(value)}</td></tr>`).join('') : '<tr><td colspan="2"><span class="empty">no readable response headers</span></td></tr>'}</tbody>
+          </table>
+        </div>
+      ` : `
+        <div class="notice" style="margin-bottom:12px">The target was reachable for DNS/passive intelligence, but its web surface could not be read from this browser session. This is usually caused by Cloudflare bot protection blocking data-center proxy IPs, CORS, TLS policy, or the remote server refusing browser-origin requests.</div>
+        <dl class="kv">
+          <dt>status</dt><dd>${pill('web fingerprint blocked / unavailable', 'amber')}</dd>
+          <dt>attempted</dt><dd>https://${escapeHTML(data.domain)} → https://www.${escapeHTML(data.domain)} → http://${escapeHTML(data.domain)}</dd>
+          <dt>last error</dt><dd style="font-size:11px;opacity:0.8">${escapeHTML((http.error || 'request failed').slice(0, 300))}</dd>
+          <dt>next best data</dt><dd>Use DNS records, certificate transparency rows, ASN/geo enrichment, and passive subdomains shown above.</dd>
+        </dl>`;
+      $('#httpModule').innerHTML = moduleShell('http fingerprint', 'direct fetch → 6-proxy fallback', body);
+    }
+
+    function renderAll(data) {
+      renderStats(data);
+      renderWhois(data);
+      renderNetwork(data);
+      renderDNS(data);
+      renderSubdomains(data);
+      renderCerts(data);
+      renderHTTP(data);
+      results.classList.add('ready');
+      results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function runScan(rawDomain) {
+      const domain = cleanDomain(rawDomain);
+      if (!domain) {
+        log('› invalid target. enter a bare domain like example.com', 'err');
+        input.focus();
+        return;
+      }
+
+      scanBtn.disabled = true;
+      input.disabled = true;
+      results.classList.remove('ready');
+      state.logs = [];
+      state.scanStartedAt = performance.now();
+      loadingWrap.classList.add('active');
+      consoleBox.innerHTML = '';
+
+      log(`› target locked: ${domain}`, 'info');
+      log('› [01] resolving dns records via dns.google...');
+
+      const dnsPromise = fetchDNS(domain);
+      const subPromise = fetchSubdomains(domain);
+      const httpPromise = fetchHTTPFingerprint(domain);
+
+      const dns = await dnsPromise;
+      const whoisPromise = fetchRDAP(domain, dns.records);
+      const networkPromise = fetchNetworkFootprint(dns.records);
+
+      const [subdomains, http, whois, network] = await Promise.all([subPromise, httpPromise, whoisPromise, networkPromise]);
+
+      const data = { domain, dns, subdomains, http, whois, network };
+      renderAll(data);
+      log('› scan complete.', 'ok');
+
+      scanBtn.disabled = false;
+      input.disabled = false;
+      input.value = domain;
+    }
+
+    scanBtn.addEventListener('click', () => runScan(input.value));
+    input.addEventListener('keydown', (event) => { if (event.key === 'Enter') runScan(input.value); });
+    document.querySelectorAll('[data-domain]').forEach(button => {
+      button.addEventListener('click', () => { input.value = button.dataset.domain; runScan(button.dataset.domain); });
+    });
+  </script>
 </body>
 </html>
